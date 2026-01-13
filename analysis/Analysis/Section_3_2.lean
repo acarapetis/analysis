@@ -67,7 +67,7 @@ theorem SetTheory.Set.axiom_of_regularity {A:Set} (h: A ≠ ∅) :
 -/
 theorem SetTheory.Set.emptyset_exists (h: axiom_of_universal_specification):
     ∃ (X:Set), ∀ x, x ∉ X := by
-  sorry
+  simpa using h (fun y => False)
 
 /--
   Exercise 3.2.1.  The spirit of the exercise is to establish these results without using either
@@ -75,7 +75,7 @@ theorem SetTheory.Set.emptyset_exists (h: axiom_of_universal_specification):
 -/
 theorem SetTheory.Set.singleton_exists (h: axiom_of_universal_specification) (x:Object):
     ∃ (X:Set), ∀ y, y ∈ X ↔ y = x := by
-  sorry
+  simpa using h (fun y => y = x)
 
 /--
   Exercise 3.2.1.  The spirit of the exercise is to establish these results without using either
@@ -83,7 +83,7 @@ theorem SetTheory.Set.singleton_exists (h: axiom_of_universal_specification) (x:
 -/
 theorem SetTheory.Set.pair_exists (h: axiom_of_universal_specification) (x₁ x₂:Object):
     ∃ (X:Set), ∀ y, y ∈ X ↔ y = x₁ ∨ y = x₂ := by
-  sorry
+  simpa using h (fun y => y = x₁ ∨ y = x₂)
 
 /--
   Exercise 3.2.1. The spirit of the exercise is to establish these results without using either
@@ -91,7 +91,7 @@ theorem SetTheory.Set.pair_exists (h: axiom_of_universal_specification) (x₁ x�
 -/
 theorem SetTheory.Set.union_exists (h: axiom_of_universal_specification) (A B:Set):
     ∃ (Z:Set), ∀ z, z ∈ Z ↔ z ∈ A ∨ z ∈ B := by
-  sorry
+  simpa using h (fun y => y ∈ A ∨ y ∈ B)
 
 /--
   Exercise 3.2.1. The spirit of the exercise is to establish these results without using either
@@ -99,7 +99,7 @@ theorem SetTheory.Set.union_exists (h: axiom_of_universal_specification) (A B:Se
 -/
 theorem SetTheory.Set.specify_exists (h: axiom_of_universal_specification) (A:Set) (P: A → Prop):
     ∃ (Z:Set), ∀ z, z ∈ Z ↔ ∃ h : z ∈ A, P ⟨ z, h ⟩ := by
-  sorry
+  simpa using h (fun z => ∃ h: z ∈ A, P ⟨z, h⟩)
 
 /--
   Exercise 3.2.1. The spirit of the exercise is to establish these results without using either
@@ -108,20 +108,73 @@ theorem SetTheory.Set.specify_exists (h: axiom_of_universal_specification) (A:Se
 theorem SetTheory.Set.replace_exists (h: axiom_of_universal_specification) (A:Set)
   (P: A → Object → Prop) (hP: ∀ x y y', P x y ∧ P x y' → y = y') :
     ∃ (Z:Set), ∀ y, y ∈ Z ↔ ∃ a : A, P a y := by
-  sorry
+  simpa using h (fun y => ∃ a : A, P a y)
+
+lemma SetTheory.Set.insert_not_empty (x: Object) (X: Set): insert x X ≠ ∅ := by
+  apply nonempty_of_inhabited (X:=insert x X) (x:=x)
+  simp_all
+
+lemma SetTheory.Set.sing_not_empty (x: Object): ({x}: Set) ≠ ∅ := by
+  have hx : x ∈ ({x}: Set) := by simp_all
+  by_contra h
+  rw [h] at hx
+  simp_all
 
 /-- Exercise 3.2.2 -/
-theorem SetTheory.Set.not_mem_self (A:Set) : (A:Object) ∉ A := by sorry
+theorem SetTheory.Set.not_mem_self (A:Set) : (A:Object) ∉ A := by
+  have h2: set_to_object A ∈ ({set_to_object A}:Set) := by simp_all
+  have hnz: {set_to_object A} ≠ (∅: Set) := sing_not_empty A
+  have h' := axiom_of_regularity (A := {set_to_object A}) hnz
+  simp_all
+  rw [disjoint_iff] at h'
+  have hem := emptyset_mem A
+  change set_to_object A ∉ (∅:Set) at hem
+  rw [<-h',mem_inter] at hem
+  simp_all
 
 /-- Exercise 3.2.2 -/
-theorem SetTheory.Set.not_mem_mem (A B:Set) : (A:Object) ∉ B ∨ (B:Object) ∉ A := by sorry
+theorem SetTheory.Set.not_mem_mem (A B:Set) : (A:Object) ∉ B ∨ (B:Object) ∉ A := by
+  let AB: Set := {(A:Object), (B:Object)}
+  have hAB: AB ≠ ∅ := insert_not_empty A {(B:Object)}
+  obtain ⟨x, hx⟩ := axiom_of_regularity hAB
+  have hcases: x.val = (A:Object) ∨ x.val = (B:Object) := by
+    have hap := x.prop
+    rw [mem_pair] at hap
+    simp_all
+  obtain hA|hB := hcases
+  . have h2 := hx A hA
+    rw [disjoint_iff] at h2
+    have : (B:Object) ∉ A := by
+      by_contra h
+      have : (B: Object) ∈ AB := by grind [mem_pair]
+      have : (B: Object) ∈ A ∩ AB := by grind [mem_inter]
+      have : A ∩ AB ≠ ∅ := by simp_all
+      contradiction
+    simp_all
+  . have h2 := hx B hB
+    rw [disjoint_iff] at h2
+    have : (A:Object) ∉ B := by
+      by_contra h
+      have : (A: Object) ∈ AB := by grind [mem_pair]
+      have : (A: Object) ∈ B ∩ AB := by grind [mem_inter]
+      have : B ∩ AB ≠ ∅ := by simp_all
+      contradiction
+    simp_all
 
 /-- Exercise 3.2.3 -/
 theorem SetTheory.Set.univ_iff : axiom_of_universal_specification ↔
-  ∃ (U:Set), ∀ x, x ∈ U := by sorry
+    ∃ (U:Set), ∀ x, x ∈ U := by
+  constructor
+  . intro h
+    have := h (fun x => True)
+    simp_all
+  . intro ⟨U, hU⟩ P
+    use specify U (fun x => P x.val)
+    simp_all
 
 /-- Exercise 3.2.3 -/
-theorem SetTheory.Set.no_univ : ¬ ∃ (U:Set), ∀ (x:Object), x ∈ U := by sorry
-
+theorem SetTheory.Set.no_univ : ¬ ∃ (U:Set), ∀ (x:Object), x ∈ U := by
+  rw [<-univ_iff]
+  exact Russells_paradox
 
 end Chapter3
