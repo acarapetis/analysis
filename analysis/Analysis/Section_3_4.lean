@@ -41,7 +41,8 @@ theorem SetTheory.Set.mem_image {X Y:Set} (f:X → Y) (S: Set) (y:Object) :
 
 /-- Alternate definition of image using axiom of specification -/
 theorem SetTheory.Set.image_eq_specify {X Y:Set} (f:X → Y) (S: Set) :
-    image f S = Y.specify (fun y ↦ ∃ x:X, x.val ∈ S ∧ f x = y) := by sorry
+    image f S = Y.specify (fun y ↦ ∃ x:X, x.val ∈ S ∧ f x = y) := by
+  ext; simp; grind
 
 /--
   Connection with Mathlib's notion of image.  Note the need to utilize the `Subtype.val` coercion
@@ -65,13 +66,23 @@ theorem SetTheory.Set.image_f_3_4_2 : image f_3_4_2 {1,2,3} = {2,4,6} := by
   all_goals simp_all
 
 /-- Example 3.4.3 is written using Mathlib's notion of image. -/
-example : (fun n:ℤ ↦ n^2) '' {-1,0,1,2} = {0,1,4} := by aesop
+example : (fun n:ℤ ↦ n^2) '' {-1,0,1,2} = {0,1,4} := by aesop?
 
 theorem SetTheory.Set.mem_image_of_eval {X Y:Set} (f:X → Y) (S: Set) (x:X) :
-    x.val ∈ S → (f x).val ∈ image f S := by sorry
+    x.val ∈ S → (f x).val ∈ image f S := by
+  intro h
+  rw [mem_image]
+  use x
 
 theorem SetTheory.Set.mem_image_of_eval_counter :
-    ∃ (X Y:Set) (f:X → Y) (S: Set) (x:X), ¬((f x).val ∈ image f S → x.val ∈ S) := by sorry
+    ∃ (X Y:Set) (f:X → Y) (S: Set) (x:X), ¬((f x).val ∈ image f S → x.val ∈ S) := by
+    let X: Set := {0, 1}
+    let Y: Set := {0}
+    let f (x: X): Y := ⟨0, by simp [Y]⟩
+    let S: Set := {0}
+    let x: X := ⟨1, by simp [X]⟩
+    use X, Y, f, S, x
+    simp [X, Y, f, S, x]
 
 /--
   Definition 3.4.4 (inverse images).
@@ -110,7 +121,20 @@ theorem SetTheory.Set.preimage_f_3_4_2 : preimage f_3_4_2 {2,4,6} = {1,2,3} := b
   all_goals simp
 
 theorem SetTheory.Set.image_preimage_f_3_4_2 :
-    image f_3_4_2 (preimage f_3_4_2 {1,2,3}) ≠ {1,2,3} := by sorry
+    image f_3_4_2 (preimage f_3_4_2 {1,2,3}) ≠ {1,2,3} := by
+      set S: Set := {1,2,3}
+      have h1: 1 ∈ S := by simp [S]
+      have hp: preimage f_3_4_2 S = {1} := by
+        ext x
+        rw [mem_preimage']
+        constructor
+        . intro ⟨x', ⟨hxx', h⟩⟩
+          rw [mem_singleton]
+          suffices: x'.val = 1
+          . simp_all
+          set y := (2*x':ℕ)
+          have : y = 1 ∨ y = 2 ∨ y = 3 := by aesop
+          have : y = 2 := by aesop
 
 /-- Example 3.4.7 (using the Mathlib notion of preimage) -/
 example : (fun n:ℤ ↦ n^2) ⁻¹' {0,1,4} = {-2,-1,0,1,2} := by
