@@ -45,9 +45,15 @@ structure PreRat where
 instance PreRat.instSetoid : Setoid PreRat where
   r a b := a.numerator * b.denominator = b.numerator * a.denominator
   iseqv := {
-    refl := by sorry
-    symm := by sorry
-    trans := by sorry
+    refl := fun _ => rfl
+    symm := by intro x y h; exact Eq.symm h
+    trans := by
+      intro x y z hxy hyz
+      have h: x.numerator * y.denominator * z.denominator = y.numerator * x.denominator * z.denominator := by simp_all only
+      rw [mul_comm y.numerator, mul_assoc x.denominator, hyz] at h
+      rw [<-mul_assoc x.denominator, mul_assoc x.numerator, mul_comm y.denominator, <-mul_assoc, mul_comm x.denominator] at h
+      exact Int.eq_of_mul_eq_mul_right y.nonzero h
+      -- Ok that was a massive pain so I'mma start grinding all this kinda shit
     }
 
 @[simp]
@@ -78,7 +84,16 @@ theorem Rat.eq_diff (n:Rat) : ∃ a b, b ≠ 0 ∧ n = a // b := by
   may be more convenient to avoid that operation and work directly with the `Quotient` API.
 -/
 instance Rat.decidableEq : DecidableEq Rat := by
-  sorry
+  intro a b
+  have : ∀ (n:PreRat) (m: PreRat),
+      Decidable (Quotient.mk PreRat.instSetoid n = Quotient.mk PreRat.instSetoid m) := by
+    intro ⟨n1,n2,hn⟩ ⟨m1,m2,hm⟩
+    have hqn: Quotient.mk _ ⟨n1,n2,hn⟩ = n1 // n2 := by grind only
+    have hqm: Quotient.mk _ ⟨m1,m2,hm⟩ = m1 // m2 := by grind only
+    rw [hqn, hqm, eq _ _ hn hm]
+    exact decEq _ _
+  exact Quotient.recOnSubsingleton₂ a b this
+
 
 /-- Lemma 4.2.3 (Addition well-defined) -/
 instance Rat.add_inst : Add Rat where
@@ -98,7 +113,11 @@ theorem Rat.add_eq (a c:ℤ) {b d:ℤ} (hb: b ≠ 0) (hd: d ≠ 0) :
 
 /-- Lemma 4.2.3 (Multiplication well-defined) -/
 instance Rat.mul_inst : Mul Rat where
-  mul := Quotient.lift₂ (fun ⟨ a, b, h1 ⟩ ⟨ c, d, h2 ⟩ ↦ (a*c) // (b*d)) (by sorry)
+  mul := Quotient.lift₂ (fun ⟨ a, b, h1 ⟩ ⟨ c, d, h2 ⟩ ↦ (a*c) // (b*d)) (by 
+    intro ⟨n1, d1, h1⟩ ⟨n2, d2, h2⟩ ⟨n3, d3, h3⟩ ⟨n4, d4, h4⟩ h13 h24
+    simp [h1, h2, h3, h4, Setoid.r] at *
+    grind only
+  )
 
 /-- Definition 4.2.2 (Multiplication of rationals) -/
 theorem Rat.mul_eq (a c:ℤ) {b d:ℤ} (hb: b ≠ 0) (hd: d ≠ 0) :
@@ -107,7 +126,11 @@ theorem Rat.mul_eq (a c:ℤ) {b d:ℤ} (hb: b ≠ 0) (hd: d ≠ 0) :
 
 /-- Lemma 4.2.3 (Negation well-defined) -/
 instance Rat.neg_inst : Neg Rat where
-  neg := Quotient.lift (fun ⟨ a, b, h1 ⟩ ↦ (-a) // b) (by sorry)
+  neg := Quotient.lift (fun ⟨ a, b, h1 ⟩ ↦ (-a) // b) (by 
+    intro ⟨n1, d1, h1⟩ ⟨n2, d2, h2⟩ h
+    simp [h1, h2, Setoid.r] at *
+    exact h
+  )
 
 /-- Definition 4.2.2 (Negation of rationals) -/
 theorem Rat.neg_eq (a:ℤ) {b:ℤ} (hb: b ≠ 0) : - (a // b) = (-a) // b := by
@@ -130,18 +153,30 @@ theorem Rat.coe_Nat_eq (n:ℕ) : (n:Rat) = n // 1 := rfl
 theorem Rat.of_Nat_eq (n:ℕ) : (ofNat(n):Rat) = (ofNat(n):Nat) // 1 := rfl
 
 /-- natCast distributes over successor -/
-theorem Rat.natCast_succ (n: ℕ) : ((n + 1: ℕ): Rat) = (n: Rat) + 1 := by sorry
+theorem Rat.natCast_succ (n: ℕ) : ((n + 1: ℕ): Rat) = (n: Rat) + 1 := by
+  rw [coe_Nat_eq, coe_Nat_eq, of_Nat_eq, add_eq, eq] <;> grind only
 
 /-- intCast distributes over addition -/
-lemma Rat.intCast_add (a b:ℤ) : (a:Rat) + (b:Rat) = (a+b:ℤ) := by sorry
+lemma Rat.intCast_add (a b:ℤ) : (a:Rat) + (b:Rat) = (a+b:ℤ) := by
+  repeat rw [coe_Int_eq]
+  rw [add_eq]
+  all_goals grind only
 
 /-- intCast distributes over multiplication -/
-lemma Rat.intCast_mul (a b:ℤ) : (a:Rat) * (b:Rat) = (a*b:ℤ) := by sorry
+lemma Rat.intCast_mul (a b:ℤ) : (a:Rat) * (b:Rat) = (a*b:ℤ) := by
+  repeat rw [coe_Int_eq]
+  rw [mul_eq]
+  all_goals grind only
 
 /-- intCast commutes with negation -/
 lemma Rat.intCast_neg (a:ℤ) : - (a:Rat) = (-a:ℤ) := rfl
 
-theorem Rat.coe_Int_inj : Function.Injective (fun n:ℤ ↦ (n:Rat)) := by sorry
+theorem Rat.coe_Int_inj : Function.Injective (fun n:ℤ ↦ (n:Rat)) := by
+  intro a b h
+  simp only at h
+  repeat rw [coe_Int_eq] at h
+  rw [eq] at h
+  all_goals grind only
 
 /--
   Whereas the book leaves the inverse of 0 undefined, it is more convenient in Lean to assign a
@@ -149,7 +184,12 @@ theorem Rat.coe_Int_inj : Function.Injective (fun n:ℤ ↦ (n:Rat)) := by sorry
 -/
 instance Rat.instInv : Inv Rat where
   inv := Quotient.lift (fun ⟨ a, b, h1 ⟩ ↦ b // a) (by
-    sorry -- hint: split into the `a=0` and `a≠0` cases
+    intro ⟨n1, d1, h1⟩ ⟨n2, d2, h2⟩ h
+    rw [PreRat.eq] at h
+    simp
+    by_cases h10 : n1 = 0 <;> by_cases h20: n2 = 0 
+    <;> simp [h10, h20, Setoid.r]
+    <;> grind only [Int.mul_ne_zero]
 )
 
 lemma Rat.inv_eq (a:ℤ) {b:ℤ} (hb: b ≠ 0) : (a // b)⁻¹ = b // a := by
